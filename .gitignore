@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════
+# DBA — 什么进仓库，什么不进
+#
+# 原则：**记忆正文进仓库，可再生的索引与运行态不进。**
+#
+#   进  = memory/core.md、memory/stream.md、memory/ws/*.md
+#         —— 这是记忆本身，是这个仓库存在的理由。丢了就真丢了。
+#   不进 = memory/.index/、memory/.vec/
+#         —— 都能从正文重建（关键词 ~1s，向量 ~12s）。而且它们是**整体重写**的
+#            二进制/大 JSON：每次重建都产生一个全新的文件，git 无法做增量 diff，
+#            历史会被撑爆（两个文件相加近 4MB，重建几十次就是几百 MB 历史）。
+#            克隆后跑一句 `py nb_rebuild.py` 即得，没必要进版本库。
+# ═══════════════════════════════════════════════════════════
+
+# ── 索引与向量（可重建） ──
+memory/.index/
+memory/.vec/
+
+# ── 运行态产物（每轮组装都会变，无版本意义） ──
+memory/_core_context.md
+memory/_hits_context.md
+memory/_assembled_context.md
+memory/_assembly_version.txt
+memory/.query
+memory/.current-session
+memory/.pending.jsonl
+memory/.turns/
+memory/.rwkv/
+memory/.rwkv-probe.json
+memory/_pending_core.md
+training/
+
+# ── 日志与临时文件 ──
+*.log
+*.tmp
+*.bak
+*.bak-*
+*.mojibake-bak
+~$*
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# ── 编辑器/系统 ──
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ── 密钥（**双保险**：写入侧本就出库即脱敏，但这里再挡一道） ──
+# ⚠️ 记忆正文由 DBA 的 sanitize 流程脱敏（key/卡号/BIN/CVV 一律抹掉），
+#    但那依赖每个写入方都守规矩。真正兜底的是这一条：万一有人把 .env
+#    或凭据文件丢进仓库目录，git 不会替你上传。
+.env
+.env.*
+*.key
+*.pem
+credentials*
+*credentials*
+*_key.txt
+*_keys.txt
+
+# ── 本地个人配置（可能含路径/口令，与机器绑定） ──
+local/
+*.local.md

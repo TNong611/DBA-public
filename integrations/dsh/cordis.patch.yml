@@ -1,0 +1,25 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# ⭐ DBA 双脑架构记忆（2026-10-06 迁移自 hermes/notebook）：
+#   memory/core.md 全量注入 | memory/stream.md 记忆流 | memory/ws/*.md 工作区册
+#   + 向量层 memory/.vec/（bge-m3，Ollama GPU，与关键词索引零耦合）
+# 组装与检索由 **DBA 仓库内** 的 scripts/nb_*.py 负责（不再是 ~/.dsh/scripts）：
+#   nb_bridge 产出 _core_context.md + _hits_context.md，snowfox-inject 注入系统提示
+# 两个 .mjs 从 DBA_HOME（默认 D:\AI\DBA）解析路径，不硬编码。
+- insert:
+    # DSH → 记忆流：每 turn 写一行「何时干过什么」到 DBA 的 stream.md，并防抖重建索引
+    - id: snowfox-sync
+      name: './snowfox-sync.mjs'
+    # 组装产物 → 系统提示 section（两段：稳定段 + 每轮变化的检索段）
+    - id: snowfox-inject
+      name: './snowfox-inject.mjs'
+
+# ⚠️ snowfox-assemble 已停用（2026-10-05）。它在 DSH 内复刻旧的五级预算组装，
+# 读 fixed/long_term/summary/recent.md 并覆写 _assembled_context.md ——
+# 那几个文件已迁移为 *.legacy，它会用旧数据覆盖 nb_assemble 的新产物，
+# 导致注入内容变成过期记忆。组装权现已归 nb_assemble.py（由 sync 触发重建）。
+# 源码保留在原处，如需回退五级架构再重新启用本行。
+#    - id: snowfox-assemble
+#      name: './snowfox-assemble.mjs'

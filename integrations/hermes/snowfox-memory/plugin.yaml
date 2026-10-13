@@ -1,0 +1,8 @@
+name: snowfox-memory
+kind: standalone
+version: "6.0.0"
+description: "DBA 双脑架构记忆（core 全量注入 + stream/ws 检索 + bge-m3 向量层）；索引规则：用户输入→本地模型索引→云端模型，记忆不清晰可二次索引"
+hooks:
+  - pre_llm_call
+  - post_llm_call
+  - on_session_end
