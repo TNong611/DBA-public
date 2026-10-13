@@ -76,7 +76,7 @@ def _embed(texts: list[str], model: str | None = None) -> "list[list[float]]":
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with urllib.request.urlopen(req, timeout=90) as r:
             body = json.loads(r.read().decode("utf-8"))
     except urllib.error.URLError as e:
         raise VecUnavailable(
@@ -84,7 +84,14 @@ def _embed(texts: list[str], model: str | None = None) -> "list[list[float]]":
             f"  起服务: ollama serve\n  拉模型: ollama pull {model}"
         ) from e
     except TimeoutError as e:
-        raise VecUnavailable(f"Ollama 嵌入超时（{model}），可能在跑 CPU 或模型过大") from e
+        # ⚠️ 别把这条当"模型太大"就完事：最常见的原因是**上一个请求把服务挂住了**
+        #   （单请求 token 总量过载），此时客户端超时、服务端仍在算，后面全部排队。
+        #   处置是重启服务 + 调小 char_budget，不是换模型。
+        raise VecUnavailable(
+            f"Ollama 嵌入超时（{model}）：{len(texts)} 条 / {sum(len(t) for t in texts)} 字符。\n"
+            f"  多半是单请求过载挂住了服务 → 重启：taskkill /IM ollama.exe /F 然后 ollama serve\n"
+            f"  然后调小 build(char_budget=...)，默认 1800"
+        ) from e
 
     embs = body.get("embeddings")
     if not embs:
@@ -194,8 +201,17 @@ def embed_text_of(item: dict) -> str:
 
 # ── 建索引 ────────────────────────────────────────────────────────
 
-def build(batch: int = 16, verbose: bool = True) -> dict:
-    """全量重建向量索引。返回统计信息。"""
+def build(batch: int = 16, verbose: bool = True, char_budget: int = 1800) -> dict:
+    """全量重建向量索引。返回统计信息。
+
+    ⚠️ **为什么要按字符预算分组，而不是按条数**（2026-10-13 实测）：
+    Ollama 的 `/api/embed` 在**单请求 token 总量过大时不报错、而是挂住** ——
+    客户端超时后它还在算，后续请求排队同样超时，整个嵌入通道看起来"死了"。
+    旧实现 `batch=16` × 每条 4000 字符 = 单请求可达 3 万 token（bge-m3 上限才 8192）。
+    实测：1 条 4000 字符 ✅ 0.3s；4 条各 4000 字符 ❌ 挂死 75s+；
+    而 16 条**短**文本（合计 ~1200 字符）✅ 0.1~1.5s —— **瓶颈是字符总量，不是条数**。
+    所以这里按累计字符数开组，条数只作为上限兜底。
+    """
     import numpy as np
 
     C.ensure_dirs()
@@ -203,16 +219,29 @@ def build(batch: int = 16, verbose: bool = True) -> dict:
     if not items:
         raise VecCorrupt("没有任何可嵌入的段落：core/stream/ws 都是空的？")
 
+    # 按字符预算分组（单条超预算时自成一组，不会把别的挤掉）
+    groups: list[list[str]] = []
+    cur: list[str] = []
+    cur_len = 0
+    for it in items:
+        t = embed_text_of(it)
+        if cur and (cur_len + len(t) > char_budget or len(cur) >= batch * 4):
+            groups.append(cur)
+            cur, cur_len = [], 0
+        cur.append(t)
+        cur_len += len(t)
+    if cur:
+        groups.append(cur)
+
     vecs: list[list[float]] = []
     t0 = time.time()
-    for i in range(0, len(items), batch):
-        chunk = items[i:i + batch]
-        embs = _embed([embed_text_of(it) for it in chunk])
+    for gi, chunk in enumerate(groups):
+        embs = _embed(chunk)
         if len(embs) != len(chunk):
             raise VecCorrupt(f"嵌入条数不匹配：要 {len(chunk)} 条，返回 {len(embs)} 条")
         vecs.extend(embs)
         if verbose:
-            done = min(i + batch, len(items))
+            done = sum(len(g) for g in groups[:gi + 1])
             print(f"  [{done}/{len(items)}] {time.time() - t0:.1f}s", end="\r", flush=True)
     if verbose:
         print()
