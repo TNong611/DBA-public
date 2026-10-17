@@ -1,10 +1,16 @@
 /** Durable pending user+assistant snapshots; no restart or composition changes. */
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 export const name = 'snowfox-sync'
-const DBA_HOME = process.env.DBA_HOME || 'D:\\AI\\DBA'
+// 仓库根：Windows 默认 D:\AI\DBA，类 Unix（Termux/Linux/macOS）默认 ~/repos/DBA。
+const DBA_HOME = process.env.DBA_HOME
+  || (process.platform === 'win32' ? 'D:\\AI\\DBA' : join(process.env.HOME || '.', 'repos', 'DBA'))
+// 解释器：Windows 用 `py -3.14`，类 Unix 用 `python3`。
+// 原实现把 'py' 写死，在 Termux 上每次调用都 ENOENT（本机没有 py 指令）。
+const PY = process.env.DBA_PYTHON || (process.platform === 'win32' ? 'py' : 'python3')
+const PY_ARGS = process.platform === 'win32' ? ['-3.14'] : []
 const SCRIPTS = join(DBA_HOME, 'scripts')
 const MEMORY = join(DBA_HOME, 'memory')
 function textOf(blocks) {
@@ -13,13 +19,17 @@ function textOf(blocks) {
   return blocks.filter(b => b?.type === 'text' && typeof b.text === 'string').map(b => b.text).join('\n').trim()
 }
 function python(script, args, data) {
-  return execFileSync('py', ['-3.14', script, ...args], {
+  return execFileSync(PY, [...PY_ARGS, script, ...args], {
     cwd: SCRIPTS, input: data === undefined ? undefined : JSON.stringify(data),
     encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 15000, windowsHide: true,
   })
 }
 function retryQueue() {
   // Queue recovery is handled manually to avoid creating a console host that can steal fullscreen focus.
+  try {
+    const child = spawn(PY, [...PY_ARGS, 'nb_turn.py', 'worker'], { cwd: SCRIPTS, stdio: 'ignore', windowsHide: true })
+    child.on('error', e => console.error('[snowfox-sync] worker spawn failed:', e.message)); child.unref()
+  } catch (e) { console.error('[snowfox-sync] worker spawn failed:', e.message) }
 }
 const io = {
   snapshot: e => python('nb_turn_draft.py', ['snapshot'], e),
@@ -28,7 +38,7 @@ const io = {
   enqueue: e => python('nb_turn.py', ['enqueue', '--no-spawn'], Object.fromEntries(['session_id','event_id','user','assistant','at'].map(k => [k, e[k]]))),
   retry: retryQueue,
   assembly(query) {
-    try { execFileSync('py', ['-3.14', 'nb_bridge.py'], { cwd: SCRIPTS, input: query, stdio: ['pipe','ignore','inherit'], timeout: 60000, windowsHide: true }) }
+    try { execFileSync(PY, [...PY_ARGS, 'nb_bridge.py'], { cwd: SCRIPTS, input: query, stdio: ['pipe','ignore','inherit'], timeout: 60000, windowsHide: true }) }
     catch (e) { console.error('[snowfox-sync] assembly failed:', e.message) }
   },
   error: e => console.error('[snowfox-sync] draft failed:', e.message),

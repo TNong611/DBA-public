@@ -1,9 +1,10 @@
 """复验 sol6.1 反证指出的「修复引入的新问题」。"""
 import sys, json, tempfile, shutil
-sys.path.insert(0, r'D:\AI\DBA\scripts')
+from pathlib import Path
+# 仓库根由本文件位置推导：原为硬编码 D:\AI\DBA，克隆到别处（如 Termux）就跑不了。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.stdout.reconfigure(encoding='utf-8')
 import nb_config as C, nb_index as I, nb_search as S, nb_write as W
-from pathlib import Path
 
 print('══ A1. 中文计划句被漏过（完成 被当成完成标记）══')
 for t in ['接下来完成索引', '现在我们来完成部署', '我们先计划完成索引',
@@ -68,7 +69,7 @@ finally:
 
 print()
 print('══ stream.md 第 230 行到底是什么（判断是否真误杀）══')
-lines = Path(r'D:\AI\DBA\memory\stream.md').read_text(encoding='utf-8').splitlines()
+lines = C.STREAM.read_text(encoding='utf-8').splitlines()
 for i in (229, 230, 231):
     if i < len(lines):
         print('  %d: %r' % (i+1, lines[i][:96]))

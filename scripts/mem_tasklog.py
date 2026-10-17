@@ -31,8 +31,11 @@ except Exception:  # pragma: no cover - 仅在 nb_config 缺失时
     _C = None
 
 # ── 当日工作区与任务日志（仍在 hermes 下，不进 DBA 仓库） ──
+# HERMES_HOME 优先；否则按平台推导：Windows 用 USERPROFILE，类 Unix（Termux/Linux）用 HOME。
+# 原实现只有 USERPROFILE，在 Termux 上会退回硬编码的 C:\Users\tnong 而写错位置。
 HH = os.environ.get("HERMES_HOME") or (
-    os.environ.get("USERPROFILE", "C:\\Users\\tnong") + "/AppData/Local/hermes"
+    (os.environ.get("USERPROFILE") or os.environ.get("HOME", ""))
+    + ("/AppData/Local/hermes" if os.name == "nt" else "/.hermes")
 )
 MEM = HH + "/memories"
 WORK = HH + "/workspace"

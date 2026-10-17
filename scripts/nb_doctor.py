@@ -300,6 +300,19 @@ def check_integrations() -> None:
             warn(f"生效位置不存在（未安装？）：{live.name}")
         elif not repo.exists():
             warn(f"仓库副本缺失：{repo.name}")
+        elif live.name == "cordis.patch.yml":
+            # ⚠️ 这一份**不能**按字节相等判：integrations/README.md 要求「把 `insert:`
+            # 那两条合并进去，**别覆盖**你原有的条目」—— 生效版天然比仓库副本长。
+            # 判据改成**包含**：仓库里每个 `- id:` 都得在生效版里找得到。
+            # 反方向（生效版缺条目）才是真漂移，仍会被抓到；多余条目属本机自有配置。
+            import re as _re
+            ids = _re.findall(r"(?m)^\s*-?\s*id:\s*(\S+)", repo.read_text(encoding="utf-8"))
+            live_ids = set(_re.findall(r"(?m)^\s*-?\s*id:\s*(\S+)", live.read_text(encoding="utf-8")))
+            missing = [i for i in ids if i not in live_ids]
+            if missing:
+                bad(f"**已漂移**：{live.name} —— 仓库的 insert 条目在生效版里缺失：{', '.join(missing)}")
+            else:
+                ok(f"包含一致：{live.name}（仓库 {len(ids)} 条 insert 都在；多出的是本机自有条目）")
         elif h(live) == h(repo):
             ok(f"一致：{live.name}")
         else:
@@ -364,7 +377,7 @@ def check_write_gate() -> None:
         junk = [
             "ok", "好的", "Hermes hit repeated errors",
             "Traceback (most recent call last):",
-            "sk-示例密钥占位", "https://example.com/x", "短",
+            "sk-abcdefghijklmnop", "https://example.com/x", "短",
         ]
         leaked = [j for j in junk if not nb_write._stream_junk_reason(j)]
         if leaked:

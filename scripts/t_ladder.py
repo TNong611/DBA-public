@@ -1,6 +1,8 @@
 """精确验证：变了但变短 → 不采纳，但必须记进 relax_notes。"""
 import sys
-sys.path.insert(0, r'D:\AI\DBA\scripts')
+from pathlib import Path
+# 仓库根由本文件位置推导（原为硬编码 D:\AI\DBA，克隆到别处就跑不了）
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.stdout.reconfigure(encoding='utf-8')
 import nb_search as S
 

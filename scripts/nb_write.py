@@ -60,7 +60,7 @@ def _ensure_files() -> None:
     if not C.CORE.exists():
         C.CORE.write_text(
             "# 核心记忆\n_全量注入 | 上限 15KB | 云端模型维护_\n\n"
-            "## 用户\n- 示例用户，学号202301230000，机器人SI 23-2班\n",
+            "## 用户\n- 刘悦宁，学号202301233055，机器人SI 23-2班\n",
             encoding="utf-8",
         )
     if not C.STREAM.exists():

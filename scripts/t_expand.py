@@ -9,7 +9,9 @@
 这样测的是**代码逻辑**，不是当前记忆的内容。
 """
 import sys, copy, time
-sys.path.insert(0, r'D:\AI\DBA\scripts')
+from pathlib import Path
+# 仓库根由本文件位置推导（原为硬编码 D:\AI\DBA，克隆到别处就跑不了）
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.stdout.reconfigure(encoding='utf-8')
 import nb_index as I
 
@@ -32,13 +34,13 @@ print('  docs=%d terms=%d' % (len(synth['docs']), len(synth['postings'])))
 print()
 
 print('══ A. 闸门：精确有候选时，绝不扩展 ══')
-terms = I.tokenize('202301230000')
+terms = I.tokenize('202301233055')
 missing = I.missing_terms(terms, synth)
 cands = I.exact_candidates(terms, synth)
 gate_open = bool(missing) and not cands
 ok = not gate_open
 if not ok: fails += 1
-print('  %s 精确命中「202301230000」: missing=%s 候选=%d → 闸门%s' % (
+print('  %s 精确命中「202301233055」: missing=%s 候选=%d → 闸门%s' % (
     '✓' if ok else '✗', missing, len(cands), '开（不该）' if gate_open else '关（正确）'))
 print()
 

@@ -5,7 +5,9 @@
 各漏过一次 expansion / narrowed）。契约必须由测试钉住，不能靠人记得。
 """
 import sys
-sys.path.insert(0, r'D:\AI\DBA\port')
+from pathlib import Path
+# 仓库根由本文件位置推导：原为硬编码 D:\AI\DBA，克隆到别处（如 Termux）就跑不了。
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'port'))
 sys.stdout.reconfigure(encoding='utf-8')
 import dba
 
@@ -60,7 +62,7 @@ for q in ["bom ing", "bom con", "索引 重建 dummy", "时间权重 xyz"]:
 print()
 print("对照：闸门开着时确实扩展了（用合成索引，不依赖当前语料）")
 import copy
-sys.path.insert(0, r'D:\AI\DBA\scripts')
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nb_index as I
 _idx = I.load()
 synth = copy.deepcopy(_idx)

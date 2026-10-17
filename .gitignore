@@ -70,3 +70,4 @@ credentials*
 # ── 本地个人配置（可能含路径/口令，与机器绑定） ──
 local/
 *.local.md
+backups/

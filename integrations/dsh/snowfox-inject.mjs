@@ -30,7 +30,8 @@ export const inject = ['systemPrompt']
  * 记忆仓库根。允许用 DBA_HOME 覆盖，便于同一份插件跑在多台机器/多份仓库上
  * （仓库是设计成可整体拷走的，路径不该硬编码进插件）。
  */
-const DBA_HOME = process.env.DBA_HOME || 'D:\\AI\\DBA'
+const DBA_HOME = process.env.DBA_HOME
+  || (process.platform === 'win32' ? 'D:\\AI\\DBA' : join(process.env.HOME || '.', 'repos', 'DBA'))
 /** 组装产物落在 memory/ 下（与记忆数据同级，便于整体搬迁）。 */
 const MEMORY_DIR = join(DBA_HOME, 'memory')
 const CORE_FILE = join(MEMORY_DIR, '_core_context.md')
